@@ -10,10 +10,10 @@ A zero-config static file server in a single binary. Drop it next to your `index
 
 | Platform | Architecture | Binary |
 |----------|-------------|--------|
-| Windows | x64 (amd64) | [simple-web-host-windows-amd64.exe](builds/simple-web-host-windows-amd64.exe) |
-| Windows | ARM64 | [simple-web-host-windows-arm64.exe](builds/simple-web-host-windows-arm64.exe) |
-| Linux | x64 (amd64) | [simple-web-host-linux-amd64](builds/simple-web-host-linux-amd64) |
-| Linux | ARM64 | [simple-web-host-linux-arm64](builds/simple-web-host-linux-arm64) |
+| Windows | x64 (amd64) | [simple-web-host-windows-amd64.exe](https://raw.githubusercontent.com/digimbyte/simple-web-host/master/builds/simple-web-host-windows-amd64.exe) |
+| Windows | ARM64 | [simple-web-host-windows-arm64.exe](https://raw.githubusercontent.com/digimbyte/simple-web-host/master/builds/simple-web-host-windows-arm64.exe) |
+| Linux | x64 (amd64) | [simple-web-host-linux-amd64](https://raw.githubusercontent.com/digimbyte/simple-web-host/master/builds/simple-web-host-linux-amd64) |
+| Linux | ARM64 | [simple-web-host-linux-arm64](https://raw.githubusercontent.com/digimbyte/simple-web-host/master/builds/simple-web-host-linux-arm64) |
 
 ## Usage
 
