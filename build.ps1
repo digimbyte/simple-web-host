@@ -10,6 +10,23 @@ Write-Host ""
 Write-Host "Creating output directory..."
 New-Item -ItemType Directory -Force -Path $out | Out-Null
 
+# Generate Windows resource files (icon + manifest)
+Write-Host ""
+Write-Host "Generating Windows resources..." -ForegroundColor Cyan
+$winresCheck = Get-Command go-winres -ErrorAction SilentlyContinue
+if (-not $winresCheck) {
+    Write-Host "  Installing go-winres..." -ForegroundColor Yellow
+    go install github.com/tc-hib/go-winres@latest
+}
+Push-Location $pkg
+go-winres make
+Pop-Location
+if ($LASTEXITCODE -eq 0) {
+    Write-Host "  OK  resources generated" -ForegroundColor Green
+} else {
+    Write-Host "  WARN  go-winres failed, Windows builds will have no icon" -ForegroundColor Yellow
+}
+
 $targets = @(
     @{ GOOS = "windows"; GOARCH = "amd64"; File = "simple-web-host-windows-amd64.exe" },
     @{ GOOS = "windows"; GOARCH = "arm64"; File = "simple-web-host-windows-arm64.exe" },
@@ -44,3 +61,5 @@ Remove-Item Env:\GOOS, Env:\GOARCH, Env:\CGO_ENABLED
 
 Write-Host ""
 Write-Host "=== Done ==="
+Write-Host ""
+Read-Host "Press Enter to close"

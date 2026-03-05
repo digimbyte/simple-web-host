@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"io"
 	"net"
@@ -19,11 +20,14 @@ var lastPing atomic.Int64
 const heartbeat = `<script>(()=>{setInterval(()=>fetch("/__ping"),3000)})();</script>`
 
 func main() {
+	portFlag := flag.Int("port", 0, "port to listen on (default: auto-select from 8080-8099)")
+	flag.Parse()
+
 	exe, _ := os.Executable()
 	exe, _ = filepath.EvalSymlinks(exe)
 	root := http.Dir(filepath.Dir(exe))
 	fs := http.FileServer(root)
-	port := 8080
+	port := *portFlag
 
 	lastPing.Store(time.Now().UnixMilli())
 
@@ -58,14 +62,25 @@ func main() {
 	})
 
 	// Find an open port
-	ln, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
-	for err != nil && port < 8100 {
-		port++
+	var ln net.Listener
+	var err error
+	if port > 0 {
 		ln, err = net.Listen("tcp", fmt.Sprintf(":%d", port))
-	}
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Port %d unavailable: %v\n", port, err)
+			os.Exit(1)
+		}
+	} else {
+		port = 8080
+		ln, err = net.Listen("tcp", fmt.Sprintf(":%d", port))
+		for err != nil && port < 8100 {
+			port++
+			ln, err = net.Listen("tcp", fmt.Sprintf(":%d", port))
+		}
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "No available port in range 8080-8099")
+			os.Exit(1)
+		}
 	}
 
 	url := fmt.Sprintf("http://localhost:%d", port)
