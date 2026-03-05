@@ -15,12 +15,13 @@ import (
 	"time"
 )
 
-var lastPing atomic.Int64
+var activeClients atomic.Int32
 
-const heartbeat = `<script>(()=>{setInterval(()=>fetch("/__ping"),3000)})();</script>`
+const heartbeat = `<script>(()=>{new EventSource("/__ping")})();</script>`
 
 func main() {
 	portFlag := flag.Int("port", 0, "port to listen on (default: auto-select from 8080-8099)")
+	stable := flag.Bool("stable", false, "persistent server: no auto-close, no heartbeat injection")
 	flag.Parse()
 
 	exe, _ := os.Executable()
@@ -29,21 +30,42 @@ func main() {
 	fs := http.FileServer(root)
 	port := *portFlag
 
-	lastPing.Store(time.Now().UnixMilli())
-
 	mux := http.NewServeMux()
 
-	mux.HandleFunc("/__ping", func(w http.ResponseWriter, r *http.Request) {
-		lastPing.Store(time.Now().UnixMilli())
-		w.WriteHeader(http.StatusNoContent)
-	})
+	if !*stable {
+		mux.HandleFunc("/__ping", func(w http.ResponseWriter, r *http.Request) {
+			flusher, ok := w.(http.Flusher)
+			if !ok {
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+			w.Header().Set("Content-Type", "text/event-stream")
+			w.Header().Set("Cache-Control", "no-cache")
+			w.Header().Set("Connection", "keep-alive")
+
+			activeClients.Add(1)
+			defer activeClients.Add(-1)
+
+			ticker := time.NewTicker(15 * time.Second)
+			defer ticker.Stop()
+			for {
+				select {
+				case <-r.Context().Done():
+					return
+				case <-ticker.C:
+					fmt.Fprint(w, ": keepalive\n\n")
+					flusher.Flush()
+				}
+			}
+		})
+	}
 
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		name := r.URL.Path
 		if strings.HasSuffix(name, "/") {
 			name += "index.html"
 		}
-		if strings.HasSuffix(name, ".html") {
+		if !*stable && strings.HasSuffix(name, ".html") {
 			if f, err := root.Open(name); err == nil {
 				defer f.Close()
 				if data, err := io.ReadAll(f); err == nil {
@@ -85,11 +107,19 @@ func main() {
 
 	url := fmt.Sprintf("http://localhost:%d", port)
 	fmt.Println("Simple Web Host")
+	if *stable {
+		fmt.Println("Mode:   stable (persistent)")
+	}
 	fmt.Printf("Serving: %s\n", filepath.Dir(exe))
 	fmt.Printf("    on: %s\n", url)
-	fmt.Println("\nThis window will close automatically when the browser tab is closed.")
 
-	go watchdog()
+	if !*stable {
+		fmt.Println("\nThis window will close automatically when the browser tab is closed.")
+		go watchdog()
+	} else {
+		fmt.Println("\nPress Ctrl+C to stop the server.")
+	}
+
 	openBrowser(url)
 	http.Serve(ln, mux)
 }
@@ -98,7 +128,7 @@ func watchdog() {
 	time.Sleep(15 * time.Second) // grace period for initial browser load
 	for {
 		time.Sleep(3 * time.Second)
-		if time.Since(time.UnixMilli(lastPing.Load())) > 10*time.Second {
+		if activeClients.Load() == 0 {
 			os.Exit(0)
 		}
 	}

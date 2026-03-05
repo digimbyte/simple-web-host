@@ -28,19 +28,30 @@ The server serves **everything** in the same directory as the binary — HTML, C
 
 ```
 -port <number>    Listen on a specific port
+-stable           Persistent mode: no auto-close, no heartbeat injection
 ```
 
 Examples:
 
 ```bash
-# Default: auto-selects first available port from 8080-8099
+# Default: auto-selects port, closes when all tabs close
 ./simple-web-host-windows-amd64.exe
 
 # Use a specific port
 ./simple-web-host-windows-amd64.exe -port 3000
+
+# Persistent server — stays running until you Ctrl+C
+./simple-web-host-windows-amd64.exe -stable
+
+# Combine both
+./simple-web-host-windows-amd64.exe -stable -port 3000
 ```
 
 If no `-port` is given and 8080 is busy, it tries the next available port up to 8099.
+
+**Default mode** — the server injects a heartbeat into HTML responses and shuts down when all browser tabs are closed. Great for quick local viewing.
+
+**Stable mode** (`-stable`) — pure static file server with zero injection. HTML is served unmodified. The server runs until manually stopped. Use this for development or when serving to other devices on the network.
 
 ## How it works
 
